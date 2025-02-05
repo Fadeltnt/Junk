@@ -1,0 +1,139 @@
+
+<StackPanel Margin="20">
+    <!-- Bouton Ajouter un fichier Word -->
+    <Button Content="Ajouter un fichier Word" Command="{Binding AjouterFichierCommand}" Width="200" Height="30"/>
+    
+    <!-- Afficher le chemin du fichier sélectionné -->
+    <TextBlock Text="{Binding CheminFichier}" FontWeight="Bold" Margin="5"/>
+    
+    <!-- Bouton Générer le XML -->
+    <Button Content="Générer XML" Command="{Binding GenererXmlCommand}" Width="200" Height="30"/>
+</StackPanel>
+
+
+Imports System.ComponentModel
+Imports System.IO
+Imports System.Windows.Input
+Imports Microsoft.Win32
+Imports System.Text.RegularExpressions
+Imports System.Xml
+Imports Word = Microsoft.Office.Interop.Word
+
+Public Class MyViewModel
+    Implements INotifyPropertyChanged
+
+    ' Propriété pour stocker le chemin du fichier sélectionné
+    Private _cheminFichier As String
+    Public Property CheminFichier As String
+        Get
+            Return _cheminFichier
+        End Get
+        Set(value As String)
+            _cheminFichier = value
+            OnPropertyChanged("CheminFichier")
+        End Set
+    End Property
+
+    ' Commandes
+    Public Property AjouterFichierCommand As ICommand
+    Public Property GenererXmlCommand As ICommand
+
+    ' Constructeur
+    Public Sub New()
+        AjouterFichierCommand = New RelayCommand(AddressOf AjouterFichier)
+        GenererXmlCommand = New RelayCommand(AddressOf GenererXml)
+    End Sub
+
+    ' Méthode pour ouvrir un fichier Word
+    Private Sub AjouterFichier(obj As Object)
+        Dim openFileDialog As New OpenFileDialog()
+        openFileDialog.Filter = "Fichiers Word (*.docx)|*.docx"
+        openFileDialog.Title = "Sélectionner un fichier Word"
+
+        If openFileDialog.ShowDialog() = True Then
+            CheminFichier = openFileDialog.FileName
+        End If
+    End Sub
+
+    ' Méthode pour extraire les codes G4 et générer le fichier XML
+    Private Sub GenererXml(obj As Object)
+        If String.IsNullOrEmpty(CheminFichier) Then
+            MessageBox.Show("Veuillez sélectionner un fichier Word.", "Erreur", MessageBoxButton.OK, MessageBoxImage.Warning)
+            Return
+        End If
+
+        ' Liste pour stocker les codes extraits
+        Dim codes As New List(Of String)
+
+        ' Ouvrir le document Word et extraire les codes
+        Dim wordApp As New Word.Application()
+        Dim wordDoc As Word.Document = wordApp.Documents.Open(CheminFichier)
+
+        Try
+            For Each paragraph As Word.Paragraph In wordDoc.Paragraphs
+                Dim text As String = paragraph.Range.Text.Trim()
+
+                ' Vérifier si le paragraphe commence par un code G4 (ex: G4S008, G4D022)
+                Dim match As Match = Regex.Match(text, "^G4[A-Z0-9]+")
+                If match.Success Then
+                    codes.Add(match.Value)
+                End If
+            Next
+        Catch ex As Exception
+            MessageBox.Show($"Erreur lors de la lecture du document : {ex.Message}", "Erreur", MessageBoxButton.OK, MessageBoxImage.Error)
+        Finally
+            ' Fermer le document et l'application Word
+            wordDoc.Close(False)
+            wordApp.Quit()
+        End Try
+
+        ' Générer le fichier XML avec les codes extraits
+        Dim xmlPath As String = Path.Combine(Path.GetDirectoryName(CheminFichier), "codes_extraits.xml")
+        Dim xmlSettings As New XmlWriterSettings With {.Indent = True, .Encoding = System.Text.Encoding.UTF8}
+
+        Using writer As XmlWriter = XmlWriter.Create(xmlPath, xmlSettings)
+            writer.WriteStartDocument()
+            writer.WriteStartElement("Codes")
+
+            For Each code In codes
+                writer.WriteElementString("Code", code)
+            Next
+
+            writer.WriteEndElement()
+            writer.WriteEndDocument()
+        End Using
+
+        MessageBox.Show($"Fichier XML généré avec succès : {xmlPath}", "Succès", MessageBoxButton.OK, MessageBoxImage.Information)
+    End Sub
+
+    ' Gestion de la notification de changement de propriété
+    Public Event PropertyChanged As PropertyChangedEventHandler Implements INotifyPropertyChanged.PropertyChanged
+
+    Protected Sub OnPropertyChanged(propertyName As String)
+        RaiseEvent PropertyChanged(Me, New PropertyChangedEventArgs(propertyName))
+    End Sub
+End Class
+
+
+
+Imports System.Windows.Input
+
+Public Class RelayCommand
+    Implements ICommand
+
+    Private ReadOnly _execute As Action(Of Object)
+
+    Public Sub New(execute As Action(Of Object))
+        _execute = execute
+    End Sub
+
+    Public Event CanExecuteChanged As EventHandler Implements ICommand.CanExecuteChanged
+
+    Public Function CanExecute(parameter As Object) As Boolean Implements ICommand.CanExecute
+        Return True
+    End Function
+
+    Public Sub Execute(parameter As Object) Implements ICommand.Execute
+        _execute(parameter)
+    End Sub
+End Class
