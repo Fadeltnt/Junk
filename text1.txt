@@ -1,0 +1,80 @@
+
+
+Imports System.Collections.ObjectModel
+Imports System.ComponentModel
+Imports System.Windows.Input
+
+Public Class FichierCommunicationViewModel
+    Implements INotifyPropertyChanged
+
+    Private _model As New FichierCommunicationModel()
+
+    ' Propriétés bindées à la vue
+    Private _identifiant As String
+    Private _langue As String
+    Private _nouveauCode As String
+
+    ' Liste observable des codes
+    Public Property Codes As New ObservableCollection(Of String)
+
+    ' Propriétés avec notifications de changement
+    Public Property Identifiant As String
+        Get
+            Return _identifiant
+        End Get
+        Set(value As String)
+            _identifiant = value
+            OnPropertyChanged("Identifiant")
+        End Set
+    End Property
+
+    Public Property Langue As String
+        Get
+            Return _langue
+        End Get
+        Set(value As String)
+            _langue = value
+            OnPropertyChanged("Langue")
+        End Set
+    End Property
+
+    Public Property NouveauCode As String
+        Get
+            Return _nouveauCode
+        End Get
+        Set(value As String)
+            _nouveauCode = value
+            OnPropertyChanged("NouveauCode")
+        End Set
+    End Property
+
+    ' Commande pour ajouter un code
+    Public ReadOnly Property AjouterCodeCommand As ICommand
+        Get
+            Return New RelayCommand(Sub()
+                                        If Not String.IsNullOrWhiteSpace(NouveauCode) Then
+                                            Codes.Add(NouveauCode)
+                                            NouveauCode = "" ' Réinitialise le champ
+                                        End If
+                                    End Sub)
+        End Get
+    End Property
+
+    ' Commande pour générer le fichier XML
+    Public ReadOnly Property GenererXMLCommand As ICommand
+        Get
+            Return New RelayCommand(Sub()
+                                        Dim cheminXML As String = "C:\temp\communication.xml"
+                                        _model.GenererXML(cheminXML, Codes.ToList(), Identifiant, Langue)
+                                        MsgBox("Fichier XML généré avec succès : " & cheminXML)
+                                    End Sub)
+        End Get
+    End Property
+
+    ' Événement pour notifier les changements
+    Public Event PropertyChanged As PropertyChangedEventHandler Implements INotifyPropertyChanged.PropertyChanged
+    Protected Sub OnPropertyChanged(propertyName As String)
+        RaiseEvent PropertyChanged(Me, New PropertyChangedEventArgs(propertyName))
+    End Sub
+
+End Class
