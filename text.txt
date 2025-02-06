@@ -1,11 +1,11 @@
-Imports System.IO
 Imports System.ComponentModel
-Imports System.Windows.Input
 
 Public Class MyViewModel
     Implements INotifyPropertyChanged
 
     Private _cheminFichier As String
+
+    ' Propriété pour stocker le chemin du fichier Word
     Public Property CheminFichier As String
         Get
             Return _cheminFichier
@@ -13,74 +13,44 @@ Public Class MyViewModel
         Set(value As String)
             _cheminFichier = value
             OnPropertyChanged("CheminFichier")
-            OnPropertyChanged("FichierCharge") ' Met à jour l'activation du bouton
+            OnPropertyChanged("FichierCharge") ' Met à jour l'état du bouton
+            SupprimerFichierCommand.RaiseCanExecuteChanged() ' Active/Désactive le bouton
         End Set
     End Property
 
     ' Propriété pour savoir si un fichier est chargé
     Public ReadOnly Property FichierCharge As Boolean
         Get
-            Return Not String.IsNullOrEmpty(CheminFichier) AndAlso File.Exists(CheminFichier)
+            Return Not String.IsNullOrEmpty(CheminFichier)
         End Get
     End Property
 
-    ' Commande pour supprimer le fichier
-    Public Property SupprimerFichierCommand As ICommand
-
-    Public Sub New()
-        ' Initialisation de la commande avec RelayCommand
-        SupprimerFichierCommand = New RelayCommand(AddressOf SupprimerFichier, AddressOf PeutSupprimerFichier)
-    End Sub
-
-    ' Vérifie si on peut supprimer le fichier (CanExecute)
-    Private Function PeutSupprimerFichier(parameter As Object) As Boolean
-        Return FichierCharge
-    End Function
-
-    ' Suppression du fichier
-    Private Sub SupprimerFichier(parameter As Object)
-        Try
-            If File.Exists(CheminFichier) Then
-                File.Delete(CheminFichier)
-                CheminFichier = "" ' Réinitialiser après suppression
-                OnPropertyChanged("FichierCharge") ' Met à jour l'état du bouton
-            End If
-        Catch ex As Exception
-            MessageBox.Show("Erreur lors de la suppression du fichier : " & ex.Message)
-        End Try
-    End Sub
-
-    ' Gestion de la notification de changement de propriété
+    ' Événement pour notifier le changement des propriétés
     Public Event PropertyChanged As PropertyChangedEventHandler Implements INotifyPropertyChanged.PropertyChanged
+
     Protected Sub OnPropertyChanged(propertyName As String)
         RaiseEvent PropertyChanged(Me, New PropertyChangedEventArgs(propertyName))
     End Sub
 End Class
-Imports System.Windows.Input
 
-Public Class RelayCommand
-    Implements ICommand
 
-    Private ReadOnly _execute As Action(Of Object)
-    Private ReadOnly _canExecute As Func(Of Object, Boolean)
+Public Property SupprimerFichierCommand As RelayCommand
 
-    Public Sub New(execute As Action(Of Object), Optional canExecute As Func(Of Object, Boolean) = Nothing)
-        _execute = execute
-        _canExecute = canExecute
-    End Sub
+Public Sub New()
+    ' Initialisation de la commande avec les méthodes associées
+    SupprimerFichierCommand = New RelayCommand(AddressOf SupprimerFichier, AddressOf PeutSupprimerFichier)
+End Sub
 
-    Public Event CanExecuteChanged As EventHandler Implements ICommand.CanExecuteChanged
+' Méthode pour supprimer le fichier
+Private Sub SupprimerFichier(parameter As Object)
+    CheminFichier = String.Empty ' Réinitialiser le chemin du fichier
+End Sub
 
-    Public Function CanExecute(parameter As Object) As Boolean Implements ICommand.CanExecute
-        Return _canExecute Is Nothing OrElse _canExecute(parameter)
-    End Function
+' Condition pour activer le bouton de suppression
+Private Function PeutSupprimerFichier(parameter As Object) As Boolean
+    Return FichierCharge ' Le bouton est actif seulement si un fichier est présent
 
-    Public Sub Execute(parameter As Object) Implements ICommand.Execute
-        _execute(parameter)
-    End Sub
-
-    ' Notifie quand l'état de la commande change (ex: activer/désactiver le bouton)
-    Public Sub RaiseCanExecuteChanged()
-        RaiseEvent CanExecuteChanged(Me, EventArgs.Empty)
-    End Sub
-End Class
+<Button Content="Supprimer le fichier"
+        Command="{Binding SupprimerFichierCommand}"
+        Margin="10"/>
+End Function
