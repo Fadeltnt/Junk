@@ -98,3 +98,89 @@ Public Class FichierCommunicationViewModel
     End Sub
 
 End Class
+
+
+<Button Content="Supprimer le fichier"
+        Command="{Binding SupprimerFichierCommand}"
+        IsEnabled="{Binding FichierCharge, Mode=OneWay}"
+        Margin="10"/>
+
+Imports System.IO
+Imports System.ComponentModel
+Imports System.Windows.Input
+
+Public Class MyViewModel
+    Implements INotifyPropertyChanged
+
+    Private _cheminFichier As String
+    Public Property CheminFichier As String
+        Get
+            Return _cheminFichier
+        End Get
+        Set(value As String)
+            _cheminFichier = value
+            OnPropertyChanged("CheminFichier")
+            OnPropertyChanged("FichierCharge") ' Met à jour le bouton
+        End Set
+    End Property
+
+    ' Propriété pour activer/désactiver le bouton de suppression
+    Public ReadOnly Property FichierCharge As Boolean
+        Get
+            Return Not String.IsNullOrEmpty(CheminFichier) AndAlso File.Exists(CheminFichier)
+        End Get
+    End Property
+
+    ' Commande pour supprimer le fichier
+    Public ReadOnly Property SupprimerFichierCommand As ICommand
+        Get
+            Return New RelayCommand(AddressOf SupprimerFichier, Function() FichierCharge)
+        End Get
+    End Property
+
+    ' Méthode pour supprimer le fichier
+    Private Sub SupprimerFichier()
+        Try
+            If File.Exists(CheminFichier) Then
+                File.Delete(CheminFichier)
+                CheminFichier = "" ' Réinitialiser après suppression
+            End If
+        Catch ex As Exception
+            MessageBox.Show("Erreur lors de la suppression du fichier : " & ex.Message)
+        End Try
+    End Sub
+
+    ' Gestion de la notification de changement de propriété
+    Public Event PropertyChanged As PropertyChangedEventHandler Implements INotifyPropertyChanged.PropertyChanged
+    Protected Sub OnPropertyChanged(propertyName As String)
+        RaiseEvent PropertyChanged(Me, New PropertyChangedEventArgs(propertyName))
+    End Sub
+End Class
+
+Imports System.Windows.Input
+
+Public Class RelayCommand
+    Implements ICommand
+
+    Private ReadOnly _execute As Action
+    Private ReadOnly _canExecute As Func(Of Boolean)
+
+    Public Sub New(execute As Action, Optional canExecute As Func(Of Boolean) = Nothing)
+        _execute = execute
+        _canExecute = canExecute
+    End Sub
+
+    Public Event CanExecuteChanged As EventHandler Implements ICommand.CanExecuteChanged
+
+    Public Function CanExecute(parameter As Object) As Boolean Implements ICommand.CanExecute
+        Return _canExecute Is Nothing OrElse _canExecute.Invoke()
+    End Function
+
+    Public Sub Execute(parameter As Object) Implements ICommand.Execute
+        _execute.Invoke()
+    End Sub
+
+    Public Sub RaiseCanExecuteChanged()
+        RaiseEvent CanExecuteChanged(Me, EventArgs.Empty)
+    End Sub
+End Class
