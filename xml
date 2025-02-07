@@ -1,0 +1,84 @@
+Imports System.Xml
+Imports System.ComponentModel
+Imports System.Windows.Input
+Imports Microsoft.Win32
+
+Public Class FichierViewModel
+    Implements INotifyPropertyChanged
+
+    ' Propriétés pour stocker les données saisies
+    Private _identifiant As String
+    Public Property Identifiant As String
+        Get
+            Return _identifiant
+        End Get
+        Set(value As String)
+            _identifiant = value
+            OnPropertyChanged("Identifiant")
+        End Set
+    End Property
+
+    Private _autreInfo As String
+    Public Property AutreInfo As String
+        Get
+            Return _autreInfo
+        End Get
+        Set(value As String)
+            _autreInfo = value
+            OnPropertyChanged("AutreInfo")
+        End Set
+    End Property
+
+    ' Commande pour générer le fichier XML
+    Public Property GenererXmlCommand As ICommand
+
+    Public Sub New()
+        GenererXmlCommand = New RelayCommand(AddressOf GenererFichierXml, AddressOf PeutGenererXml)
+    End Sub
+
+    ' Vérifie si on peut générer le fichier XML
+    Private Function PeutGenererXml(obj As Object) As Boolean
+        Return Not String.IsNullOrEmpty(Identifiant) AndAlso Not String.IsNullOrEmpty(AutreInfo)
+    End Function
+
+    ' 🔹 Méthode pour générer le fichier XML
+    Private Sub GenererFichierXml(obj As Object)
+        Try
+            ' Création du fichier XML
+            Dim xmlDoc As New XmlDocument()
+            Dim declaration As XmlDeclaration = xmlDoc.CreateXmlDeclaration("1.0", "UTF-8", Nothing)
+            xmlDoc.AppendChild(declaration)
+
+            ' Racine <Communication>
+            Dim root As XmlElement = xmlDoc.CreateElement("Communication")
+            xmlDoc.AppendChild(root)
+
+            ' Ajout des informations saisies
+            Dim idElement As XmlElement = xmlDoc.CreateElement("Identifiant")
+            idElement.InnerText = Identifiant
+            root.AppendChild(idElement)
+
+            Dim infoElement As XmlElement = xmlDoc.CreateElement("AutreInfo")
+            infoElement.InnerText = AutreInfo
+            root.AppendChild(infoElement)
+
+            ' Sauvegarde du fichier XML
+            Dim saveDialog As New SaveFileDialog()
+            saveDialog.Filter = "Fichiers XML|*.xml"
+            saveDialog.Title = "Enregistrer le fichier XML"
+            If saveDialog.ShowDialog() = True Then
+                xmlDoc.Save(saveDialog.FileName)
+            End If
+
+        Catch ex As Exception
+            MessageBox.Show("Erreur lors de la génération du fichier XML : " & ex.Message)
+        End Try
+    End Sub
+
+    ' Gestion du PropertyChanged pour mettre à jour la vue
+    Public Event PropertyChanged As PropertyChangedEventHandler Implements INotifyPropertyChanged.PropertyChanged
+
+    Protected Sub OnPropertyChanged(propertyName As String)
+        RaiseEvent PropertyChanged(Me, New PropertyChangedEventArgs(propertyName))
+    End Sub
+End Class
