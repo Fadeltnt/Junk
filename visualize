@@ -87,3 +87,141 @@ Public Class MyViewModel
         RaiseEvent PropertyChanged(Me, New PropertyChangedEventArgs(propertyName))
     End Sub
 End Class
+
+
+
+
+
+Imports System.Xml.Linq
+Imports System.IO
+Imports System.ComponentModel
+Imports System.Windows.Input
+
+Public Class MyViewModel
+    Implements INotifyPropertyChanged
+
+    ' Propriétés pour les champs de saisie
+    Private _champ1 As String = ""
+    Private _champ2 As String = ""
+    Private _champ3 As String = ""
+    Private _champ4 As String = ""
+    Private _contenuXml As String = ""
+    Private _peutTelecharger As Boolean = False
+
+    ' Événement pour la mise à jour de l'interface
+    Public Event PropertyChanged As PropertyChangedEventHandler Implements INotifyPropertyChanged.PropertyChanged
+
+    ' Propriétés liées aux champs de texte
+    Public Property Champ1 As String
+        Get
+            Return _champ1
+        End Get
+        Set(value As String)
+            _champ1 = value
+            OnPropertyChanged("Champ1")
+        End Set
+    End Property
+
+    Public Property Champ2 As String
+        Get
+            Return _champ2
+        End Get
+        Set(value As String)
+            _champ2 = value
+            OnPropertyChanged("Champ2")
+        End Set
+    End Property
+
+    Public Property Champ3 As String
+        Get
+            Return _champ3
+        End Get
+        Set(value As String)
+            _champ3 = value
+            OnPropertyChanged("Champ3")
+        End Set
+    End Property
+
+    Public Property Champ4 As String
+        Get
+            Return _champ4
+        End Get
+        Set(value As String)
+            _champ4 = value
+            OnPropertyChanged("Champ4")
+        End Set
+    End Property
+
+    ' Propriété contenant l'aperçu du XML
+    Public Property ContenuXml As String
+        Get
+            Return _contenuXml
+        End Get
+        Set(value As String)
+            _contenuXml = value
+            OnPropertyChanged("ContenuXml")
+        End Set
+    End Property
+
+    ' Propriété pour activer/désactiver le bouton de téléchargement
+    Public Property PeutTelecharger As Boolean
+        Get
+            Return _peutTelecharger
+        End Get
+        Set(value As Boolean)
+            _peutTelecharger = value
+            OnPropertyChanged("PeutTelecharger")
+        End Set
+    End Property
+
+    ' Commandes
+    Public Property GenererApercuCommand As ICommand
+    Public Property TelechargerXmlCommand As ICommand
+
+    ' Constructeur
+    Public Sub New()
+        GenererApercuCommand = New RelayCommand(AddressOf GenererApercuXML)
+        TelechargerXmlCommand = New RelayCommand(AddressOf TelechargerXML, Function() PeutTelecharger)
+    End Sub
+
+    ' Méthode pour générer l'aperçu XML en fonction des entrées utilisateur
+    Private Sub GenererApercuXML(obj As Object)
+        ' Vérifier si tous les champs sont remplis
+        If String.IsNullOrWhiteSpace(Champ1) OrElse
+           String.IsNullOrWhiteSpace(Champ2) OrElse
+           String.IsNullOrWhiteSpace(Champ3) OrElse
+           String.IsNullOrWhiteSpace(Champ4) Then
+            ContenuXml = "⚠️ Veuillez remplir tous les champs avant de générer l'aperçu."
+            PeutTelecharger = False
+            Return
+        End If
+
+        ' Création du XML basé sur les champs saisis
+        Dim doc As XDocument = New XDocument(
+            New XElement("Memo",
+                New XElement("Champ1", Champ1),
+                New XElement("Champ2", Champ2),
+                New XElement("Champ3", Champ3),
+                New XElement("Champ4", Champ4)
+            )
+        )
+
+        ' Convertir le XML en chaîne formatée pour affichage
+        ContenuXml = doc.ToString()
+
+        ' Activer le bouton de téléchargement
+        PeutTelecharger = True
+    End Sub
+
+    ' Méthode pour télécharger le XML dans un fichier
+    Private Sub TelechargerXML(obj As Object)
+        Dim cheminFichier As String = "C:\Temp\memo.xml"
+        File.WriteAllText(cheminFichier, ContenuXml)
+        MessageBox.Show("Le fichier XML a été enregistré avec succès : " & cheminFichier)
+    End Sub
+
+    ' Méthode pour notifier les changements de propriété (mise à jour UI)
+    Protected Sub OnPropertyChanged(propertyName As String)
+        RaiseEvent PropertyChanged(Me, New PropertyChangedEventArgs(propertyName))
+    End Sub
+End Class
