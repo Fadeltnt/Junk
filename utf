@@ -1,0 +1,41 @@
+' Méthode pour générer le fichier XML avec UTF-8
+Private Sub TelechargerXml(obj As Object)
+    Try
+        If String.IsNullOrEmpty(ApercuXml) Then
+            ApercuXml = "⚠️ Veuillez générer le XML avant de le télécharger."
+            Return
+        End If
+
+        ' Définir le chemin du fichier (ex: Bureau)
+        Dim cheminFichier As String = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "Memo.xml")
+
+        ' Création du document XML
+        Dim xmlDoc As New XDocument(
+            New XDeclaration("1.0", "utf-8", "yes"), ' ✅ Forcer l'encodage en UTF-8
+            New XElement("memo",
+                New XElement("champ", Champ1),
+                New XElement("communication",
+                    New XElement("champ", Champ2)
+                ),
+                New XElement("IdRef", Champ3),
+                New XElement("divers", "")
+            )
+        )
+
+        ' Écriture avec UTF-8
+        Dim settings As New XmlWriterSettings With {
+            .Indent = True, ' Formatage du fichier
+            .Encoding = New UTF8Encoding(False) ' ✅ UTF-8 sans BOM
+        }
+
+        Using writer As XmlWriter = XmlWriter.Create(cheminFichier, settings)
+            xmlDoc.Save(writer)
+        End Using
+
+        ' Confirmation
+        ApercuXml = "✅ Fichier XML enregistré en UTF-8 sur le bureau."
+
+    Catch ex As Exception
+        ApercuXml = "❌ Erreur lors du téléchargement : " & ex.Message
+    End Try
+End Sub
