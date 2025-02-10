@@ -1,3 +1,39 @@
+<StackPanel Margin="20">
+
+    <!-- ComboBox pour Courriel -->
+    <ComboBox x:Name="CbIndCourriel"
+              ItemsSource="{Binding ListeCourriel}"
+              SelectedItem="{Binding IndCourriel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+    <!-- ComboBox pour Langue -->
+    <ComboBox x:Name="CbIndLangue"
+              ItemsSource="{Binding ListeLangue}"
+              SelectedItem="{Binding IndLangue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+    <!-- Champs de saisie -->
+    <TextBox Text="{Binding Champ1, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="Saisir Champ 1" />
+    <TextBox Text="{Binding Champ2, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="Saisir Champ 2" />
+    <TextBox Text="{Binding Champ3, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="Saisir Champ 3" />
+
+    <!-- Boutons -->
+    <Button Content="Générer Aperçu" Command="{Binding GenererApercuCommand}" />
+    <Button Content="Télécharger XML" Command="{Binding TelechargerXmlCommand}" IsEnabled="{Binding PeutTelecharger}" />
+
+    <!-- Zone d'aperçu -->
+    <TextBox Height="200"
+             Width="400"
+             Text="{Binding ContenuXml}"
+             TextWrapping="Wrap"
+             VerticalScrollBarVisibility="Auto"
+             AcceptsReturn="True"
+             IsReadOnly="True"/>
+</StackPanel>
+
+
+
+
+
+
 <TextBox x:Name="TxtApercuXML"
          Height="200"
          Width="400"
