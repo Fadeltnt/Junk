@@ -7,14 +7,15 @@ Imports System.Xml.Linq
 Public Class MyViewModel
     Implements INotifyPropertyChanged
 
-    ' Propriétés pour les champs à inclure dans le XML
-    Private _champ1 As String = "Valeur par défaut"
-    Private _champ2 As String = "Valeur par défaut"
-    Private _champ3 As String = "Valeur par défaut"
-    Private _indCourriel As String = "Non"
+    ' Champs
+    Private _champ1 As String = "Valeur 1"
+    Private _champ2 As String = "Valeur 2"
+    Private _champ3 As String = "Valeur 3"
+    Private _indCourriel As String = "Oui"
     Private _indLangue As String = "Français"
+    Private _apercuXml As String
 
-    ' Propriétés pour les champs
+    ' Propriétés
     Public Property Champ1 As String
         Get
             Return _champ1
@@ -65,17 +66,29 @@ Public Class MyViewModel
         End Set
     End Property
 
-    ' Commande pour télécharger le fichier XML
+    ' Propriété pour l'aperçu du XML
+    Public Property ApercuXml As String
+        Get
+            Return _apercuXml
+        End Get
+        Set(value As String)
+            _apercuXml = value
+            OnPropertyChanged("ApercuXml")
+        End Set
+    End Property
+
+    ' Commandes
+    Public Property GenererApercuXmlCommand As ICommand
     Public Property TelechargerXmlCommand As ICommand
 
     ' Constructeur
     Public Sub New()
-        ' Initialisation de la commande
+        GenererApercuXmlCommand = New RelayCommand(AddressOf GenererApercuXml)
         TelechargerXmlCommand = New RelayCommand(AddressOf TelechargerXml)
     End Sub
 
-    ' Méthode pour générer et enregistrer le fichier XML
-    Private Sub TelechargerXml(obj As Object)
+    ' Méthode pour générer l'aperçu XML
+    Private Sub GenererApercuXml(obj As Object)
         Try
             ' Création de l'objet XML
             Dim xmlDoc As New XDocument(
@@ -88,21 +101,37 @@ Public Class MyViewModel
                 )
             )
 
-            ' Définir le chemin du fichier (ex: Bureau)
-            Dim cheminFichier As String = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "Communication.xml")
-
-            ' Sauvegarde du fichier XML
-            xmlDoc.Save(cheminFichier)
-
-            ' Affichage de confirmation
-            Console.WriteLine("✅ Fichier XML enregistré avec succès : " & cheminFichier)
+            ' Met à jour l'aperçu XML
+            ApercuXml = xmlDoc.ToString()
 
         Catch ex As Exception
-            Console.WriteLine("❌ Erreur lors de la génération du XML : " & ex.Message)
+            ApercuXml = "❌ Erreur lors de la génération : " & ex.Message
         End Try
     End Sub
 
-    ' Méthode pour notifier les mises à jour des propriétés
+    ' Méthode pour enregistrer le fichier XML
+    Private Sub TelechargerXml(obj As Object)
+        Try
+            If String.IsNullOrEmpty(ApercuXml) Then
+                ApercuXml = "⚠️ Veuillez générer le XML avant de le télécharger."
+                Return
+            End If
+
+            ' Définir le chemin du fichier (ex: Bureau)
+            Dim cheminFichier As String = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "Communication.xml")
+
+            ' Écriture dans le fichier
+            File.WriteAllText(cheminFichier, ApercuXml, Encoding.UTF8)
+
+            ' Confirmation
+            ApercuXml = "✅ Fichier XML enregistré sur le bureau."
+
+        Catch ex As Exception
+            ApercuXml = "❌ Erreur lors du téléchargement : " & ex.Message
+        End Try
+    End Sub
+
+    ' Notification de changement
     Public Event PropertyChanged As PropertyChangedEventHandler Implements INotifyPropertyChanged.PropertyChanged
     Protected Sub OnPropertyChanged(propertyName As String)
         RaiseEvent PropertyChanged(Me, New PropertyChangedEventArgs(propertyName))
