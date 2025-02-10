@@ -1,17 +1,22 @@
-' Méthode pour générer le fichier XML avec UTF-8
-Private Sub TelechargerXml(obj As Object)
+Imports System.Xml
+Imports System.Text
+
+' Classe dérivée pour forcer UTF-8 dans StringWriter
+Public Class Utf8StringWriter
+    Inherits StringWriter
+    Public Overrides ReadOnly Property Encoding As Encoding
+        Get
+            Return Encoding.UTF8 ' ✅ Force UTF-8
+        End Get
+    End Property
+End Class
+
+' Méthode pour générer l'aperçu XML avec UTF-8
+Private Sub GenererApercuXml(obj As Object)
     Try
-        If String.IsNullOrEmpty(ApercuXml) Then
-            ApercuXml = "⚠️ Veuillez générer le XML avant de le télécharger."
-            Return
-        End If
-
-        ' Définir le chemin du fichier (ex: Bureau)
-        Dim cheminFichier As String = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "Memo.xml")
-
-        ' Création du document XML
+        ' Création du document XML avec la déclaration UTF-8
         Dim xmlDoc As New XDocument(
-            New XDeclaration("1.0", "utf-8", "yes"), ' ✅ Forcer l'encodage en UTF-8
+            New XDeclaration("1.0", "utf-8", "yes"), ' ✅ Déclaration UTF-8 correcte
             New XElement("memo",
                 New XElement("champ", Champ1),
                 New XElement("communication",
@@ -22,20 +27,15 @@ Private Sub TelechargerXml(obj As Object)
             )
         )
 
-        ' Écriture avec UTF-8
-        Dim settings As New XmlWriterSettings With {
-            .Indent = True, ' Formatage du fichier
-            .Encoding = New UTF8Encoding(False) ' ✅ UTF-8 sans BOM
-        }
-
-        Using writer As XmlWriter = XmlWriter.Create(cheminFichier, settings)
-            xmlDoc.Save(writer)
+        ' Utilisation de Utf8StringWriter pour garantir UTF-8
+        Using sw As New Utf8StringWriter()
+            Using writer As XmlWriter = XmlWriter.Create(sw, New XmlWriterSettings With {.Indent = True})
+                xmlDoc.Save(writer)
+            End Using
+            ApercuXml = sw.ToString() ' ✅ Affichage en UTF-8 garanti
         End Using
 
-        ' Confirmation
-        ApercuXml = "✅ Fichier XML enregistré en UTF-8 sur le bureau."
-
     Catch ex As Exception
-        ApercuXml = "❌ Erreur lors du téléchargement : " & ex.Message
+        ApercuXml = "❌ Erreur lors de la génération : " & ex.Message
     End Try
 End Sub
