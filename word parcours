@@ -1,0 +1,80 @@
+Imports System.IO
+Imports System.Xml
+Imports Microsoft.Win32
+Imports Microsoft.Office.Interop.Word
+
+Class MainWindow
+    Private Sub BtnImporter_Click(sender As Object, e As RoutedEventArgs)
+        Dim openFileDialog As New OpenFileDialog With {
+            .Filter = "Fichiers Word (*.docx)|*.docx|Tous les fichiers (*.*)|*.*"
+        }
+
+        If openFileDialog.ShowDialog() = True Then
+            Dim extractedText As String = ExtraireTexteWord(openFileDialog.FileName)
+            TxtContenu.Text = extractedText
+        End If
+    End Sub
+
+    Private Function ExtraireTexteWord(ByVal cheminFichier As String) As String
+        Dim wordApp As New Application()
+        Dim doc As Document = Nothing
+        Dim extractedText As String = ""
+
+        Try
+            doc = wordApp.Documents.Open(cheminFichier, ReadOnly:=True)
+
+            ' Parcours chaque paragraphe et enlève le premier mot
+            For Each para As Paragraph In doc.Paragraphs
+                ' Récupère le texte du paragraphe et enlève le premier mot
+                Dim paraText As String = para.Range.Text.Trim()
+                If paraText.Length > 0 Then
+                    paraText = RetirerPremierMot(paraText)
+                    extractedText &= paraText & Environment.NewLine
+                End If
+            Next
+        Catch ex As Exception
+            MessageBox.Show("Erreur lors de la lecture du fichier : " & ex.Message)
+        Finally
+            doc?.Close(False)
+            wordApp.Quit()
+        End Try
+
+        Return extractedText
+    End Function
+
+    Private Function RetirerPremierMot(ByVal texte As String) As String
+        ' On découpe la chaîne par des espaces et on retire le premier mot
+        Dim mots As String() = texte.Split(" "c)
+        If mots.Length > 1 Then
+            ' Joindre tous les mots sauf le premier
+            Return String.Join(" ", mots.Skip(1))
+        End If
+        Return texte ' Si un seul mot, on retourne le texte tel quel
+    End Function
+
+    Private Sub BtnExporter_Click(sender As Object, e As RoutedEventArgs)
+        Dim saveFileDialog As New SaveFileDialog With {
+            .Filter = "Fichiers XML (*.xml)|*.xml"
+        }
+
+        If saveFileDialog.ShowDialog() = True Then
+            EnregistrerEnXML(saveFileDialog.FileName, TxtContenu.Text)
+            MessageBox.Show("Données exportées avec succès en XML !")
+        End If
+    End Sub
+
+    Private Sub EnregistrerEnXML(ByVal cheminFichier As String, ByVal contenu As String)
+        Dim xmlSettings As New XmlWriterSettings With {
+            .Indent = True,
+            .Encoding = System.Text.Encoding.UTF8
+        }
+
+        Using writer As XmlWriter = XmlWriter.Create(cheminFichier, xmlSettings)
+            writer.WriteStartDocument()
+            writer.WriteStartElement("Document")
+            writer.WriteElementString("Texte", contenu)
+            writer.WriteEndElement()
+            writer.WriteEndDocument()
+        End Using
+    End Sub
+End Class
