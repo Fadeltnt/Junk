@@ -1,0 +1,31 @@
+' Fermer Word proprement
+wordDoc.Close(False)
+wordApp.Quit()
+System.Runtime.InteropServices.Marshal.ReleaseComObject(wordDoc)
+System.Runtime.InteropServices.Marshal.ReleaseComObject(wordApp)
+GC.Collect()
+GC.WaitForPendingFinalizers()
+
+Dim wordApp As New Microsoft.Office.Interop.Word.Application()
+Dim wordDoc As Microsoft.Office.Interop.Word.Document
+
+Try
+    wordDoc = wordApp.Documents.Open("C:\chemin\vers\ton\fichier.docx")
+
+    ' 🛠️ Ici, ajoute ton code pour parcourir le document et extraire les données
+
+    ' ✅ Fermer Word proprement
+    wordDoc.Close(False)
+    wordApp.Quit()
+    System.Runtime.InteropServices.Marshal.ReleaseComObject(wordDoc)
+    System.Runtime.InteropServices.Marshal.ReleaseComObject(wordApp)
+    GC.Collect()
+    GC.WaitForPendingFinalizers()
+
+Catch ex As Exception
+    Console.WriteLine("Erreur : " & ex.Message)
+Finally
+    ' S'assure que Word est bien fermé même en cas d'erreur
+    If wordDoc IsNot Nothing Then wordDoc.Close(False)
+    If wordApp IsNot Nothing Then wordApp.Quit()
+End Try
