@@ -1,80 +1,75 @@
-Imports System.IO
-Imports System.Xml
-Imports Microsoft.Win32
 Imports Microsoft.Office.Interop.Word
+Imports System.IO
+Imports System.Xml.Linq
+Imports System.Text.RegularExpressions
 
-Class MainWindow
-    Private Sub BtnImporter_Click(sender As Object, e As RoutedEventArgs)
-        Dim openFileDialog As New OpenFileDialog With {
-            .Filter = "Fichiers Word (*.docx)|*.docx|Tous les fichiers (*.*)|*.*"
+' Méthode pour extraire uniquement les codes commençant par "G4"
+Private Sub ExtraireCodesG4(obj As Object)
+    Try
+        ' Boîte de dialogue pour sélectionner un fichier Word
+        Dim openFileDialog As New Microsoft.Win32.OpenFileDialog With {
+            .Filter = "Documents Word (*.docx)|*.docx|Tous les fichiers (*.*)|*.*",
+            .Title = "Sélectionner un fichier Word"
         }
 
+        ' Vérifier si l'utilisateur a sélectionné un fichier
         If openFileDialog.ShowDialog() = True Then
-            Dim extractedText As String = ExtraireTexteWord(openFileDialog.FileName)
-            TxtContenu.Text = extractedText
-        End If
-    End Sub
+            Dim cheminFichier As String = openFileDialog.FileName
 
-    Private Function ExtraireTexteWord(ByVal cheminFichier As String) As String
-        Dim wordApp As New Application()
-        Dim doc As Document = Nothing
-        Dim extractedText As String = ""
+            ' Ouvrir Word
+            Dim wordApp As New Application()
+            Dim wordDoc As Document = wordApp.Documents.Open(cheminFichier)
 
-        Try
-            doc = wordApp.Documents.Open(cheminFichier, ReadOnly:=True)
+            ' Liste pour stocker les codes trouvés
+            Dim codesG4 As New List(Of String)
 
-            ' Parcours chaque paragraphe et enlève le premier mot
-            For Each para As Paragraph In doc.Paragraphs
-                ' Récupère le texte du paragraphe et enlève le premier mot
-                Dim paraText As String = para.Range.Text.Trim()
-                If paraText.Length > 0 Then
-                    paraText = RetirerPremierMot(paraText)
-                    extractedText &= paraText & Environment.NewLine
-                End If
+            ' Expression régulière pour détecter les codes commençant par "G4"
+            Dim regexG4 As New Regex("\bG4\d+\b", RegexOptions.IgnoreCase)
+
+            ' Parcourir chaque paragraphe
+            For Each para As Paragraph In wordDoc.Paragraphs
+                Dim texte As String = para.Range.Text.Trim()
+
+                ' Vérifier s'il contient un code G4
+                Dim correspondances As MatchCollection = regexG4.Matches(texte)
+                For Each match As Match In correspondances
+                    codesG4.Add(match.Value)
+                Next
             Next
-        Catch ex As Exception
-            MessageBox.Show("Erreur lors de la lecture du fichier : " & ex.Message)
-        Finally
-            doc?.Close(False)
+
+            ' Fermer Word
+            wordDoc.Close(False)
             wordApp.Quit()
-        End Try
 
-        Return extractedText
-    End Function
-
-    Private Function RetirerPremierMot(ByVal texte As String) As String
-        ' On découpe la chaîne par des espaces et on retire le premier mot
-        Dim mots As String() = texte.Split(" "c)
-        If mots.Length > 1 Then
-            ' Joindre tous les mots sauf le premier
-            Return String.Join(" ", mots.Skip(1))
+            ' Générer l'aperçu XML avec les codes extraits
+            GenererApercuXmlG4(codesG4)
         End If
-        Return texte ' Si un seul mot, on retourne le texte tel quel
-    End Function
 
-    Private Sub BtnExporter_Click(sender As Object, e As RoutedEventArgs)
-        Dim saveFileDialog As New SaveFileDialog With {
-            .Filter = "Fichiers XML (*.xml)|*.xml"
-        }
+    Catch ex As Exception
+        ApercuXml = "❌ Erreur lors de la lecture du fichier Word : " & ex.Message
+    End Try
+End Sub
 
-        If saveFileDialog.ShowDialog() = True Then
-            EnregistrerEnXML(saveFileDialog.FileName, TxtContenu.Text)
-            MessageBox.Show("Données exportées avec succès en XML !")
-        End If
-    End Sub
+' Méthode pour générer un XML contenant uniquement les codes G4
+Private Sub GenererApercuXmlG4(codes As List(Of String))
+    Try
+        ' Création du XML avec UTF-8
+        Dim xmlDoc As New XDocument(
+            New XDeclaration("1.0", "utf-8", "yes"),
+            New XElement("memo",
+                New XElement("codesG4",
+                    From code In codes
+                    Select New XElement("code", code)
+                )
+            )
+        )
 
-    Private Sub EnregistrerEnXML(ByVal cheminFichier As String, ByVal contenu As String)
-        Dim xmlSettings As New XmlWriterSettings With {
-            .Indent = True,
-            .Encoding = System.Text.Encoding.UTF8
-        }
+        ' Mise à jour de l'aperçu XML
+        ApercuXml = xmlDoc.ToString()
 
-        Using writer As XmlWriter = XmlWriter.Create(cheminFichier, xmlSettings)
-            writer.WriteStartDocument()
-            writer.WriteStartElement("Document")
-            writer.WriteElementString("Texte", contenu)
-            writer.WriteEndElement()
-            writer.WriteEndDocument()
-        End Using
-    End Sub
-End Class
+    Catch ex As Exception
+        ApercuXml = "❌ Erreur lors de la génération : " & ex.Message
+    End Try
+End Sub
+
+ExtraireCodesG4Command = New RelayCommand(AddressOf ExtraireCodesG4)
