@@ -1,31 +1,203 @@
-' Fermer Word proprement
-wordDoc.Close(False)
-wordApp.Quit()
-System.Runtime.InteropServices.Marshal.ReleaseComObject(wordDoc)
-System.Runtime.InteropServices.Marshal.ReleaseComObject(wordApp)
-GC.Collect()
-GC.WaitForPendingFinalizers()
+Imports Microsoft.Office.Interop.Word
+Imports System.ComponentModel
+Imports System.IO
+Imports System.Text
+Imports System.Text.RegularExpressions
+Imports System.Windows.Input
+Imports System.Xml.Linq
 
-Dim wordApp As New Microsoft.Office.Interop.Word.Application()
-Dim wordDoc As Microsoft.Office.Interop.Word.Document
+Public Class MyViewModel
+    Implements INotifyPropertyChanged
 
-Try
-    wordDoc = wordApp.Documents.Open("C:\chemin\vers\ton\fichier.docx")
+    ' Champs
+    Private _champ1 As String = "Valeur 1"
+    Private _champ2 As String = "Valeur 2"
+    Private _champ3 As String = "Valeur 3"
+    Private _indCourriel As String = "Oui"
+    Private _indLangue As String = "Français"
+    Private _apercuXml As String
+    Private _codeSujet As String = String.Empty
+    Private _codesG4 As New List(Of String)()
 
-    ' 🛠️ Ici, ajoute ton code pour parcourir le document et extraire les données
+    ' Propriétés
+    Public Property Champ1 As String
+        Get
+            Return _champ1
+        End Get
+        Set(value As String)
+            _champ1 = value
+            OnPropertyChanged("Champ1")
+        End Set
+    End Property
 
-    ' ✅ Fermer Word proprement
-    wordDoc.Close(False)
-    wordApp.Quit()
-    System.Runtime.InteropServices.Marshal.ReleaseComObject(wordDoc)
-    System.Runtime.InteropServices.Marshal.ReleaseComObject(wordApp)
-    GC.Collect()
-    GC.WaitForPendingFinalizers()
+    Public Property Champ2 As String
+        Get
+            Return _champ2
+        End Get
+        Set(value As String)
+            _champ2 = value
+            OnPropertyChanged("Champ2")
+        End Set
+    End Property
 
-Catch ex As Exception
-    Console.WriteLine("Erreur : " & ex.Message)
-Finally
-    ' S'assure que Word est bien fermé même en cas d'erreur
-    If wordDoc IsNot Nothing Then wordDoc.Close(False)
-    If wordApp IsNot Nothing Then wordApp.Quit()
-End Try
+    Public Property Champ3 As String
+        Get
+            Return _champ3
+        End Get
+        Set(value As String)
+            _champ3 = value
+            OnPropertyChanged("Champ3")
+        End Set
+    End Property
+
+    Public Property IndCourriel As String
+        Get
+            Return _indCourriel
+        End Get
+        Set(value As String)
+            _indCourriel = value
+            OnPropertyChanged("IndCourriel")
+        End Set
+    End Property
+
+    Public Property IndLangue As String
+        Get
+            Return _indLangue
+        End Get
+        Set(value As String)
+            _indLangue = value
+            OnPropertyChanged("IndLangue")
+        End Set
+    End Property
+
+    ' Propriété pour l'aperçu du XML
+    Public Property ApercuXml As String
+        Get
+            Return _apercuXml
+        End Get
+        Set(value As String)
+            _apercuXml = value
+            OnPropertyChanged("ApercuXml")
+        End Set
+    End Property
+
+    ' Liste des codes G4
+    Public ReadOnly Property CodesG4 As List(Of String)
+        Get
+            Return _codesG4
+        End Get
+    End Property
+
+    ' Code sujet unique
+    Public Property CodeSujet As String
+        Get
+            Return _codeSujet
+        End Get
+        Set(value As String)
+            _codeSujet = value
+            OnPropertyChanged("CodeSujet")
+        End Set
+    End Property
+
+    ' Commandes
+    Public Property GenererApercuXmlCommand As ICommand
+    Public Property ExtraireCodesCommand As ICommand
+
+    ' Constructeur
+    Public Sub New()
+        GenererApercuXmlCommand = New RelayCommand(AddressOf GenererApercuXml)
+        ExtraireCodesCommand = New RelayCommand(AddressOf ExtraireCodesDepuisWord)
+    End Sub
+
+    ' Méthode pour extraire le code sujet et les codes G4 depuis le fichier Word
+    Private Sub ExtraireCodesDepuisWord(obj As Object)
+        Dim cheminFichier As String = "C:\Chemin\Vers\Ton\Fichier.docx"
+        _codesG4.Clear()
+        _codeSujet = String.Empty
+
+        Dim wordApp As New Application()
+        Dim wordDoc As Document = Nothing
+
+        Try
+            ' Ouvre le fichier Word en lecture seule
+            wordDoc = wordApp.Documents.Open(cheminFichier, ReadOnly:=True)
+
+            ' Définir les regex pour le code sujet et les codes G4
+            Dim regexCodeSujet As New Regex("Code sujet\s*:\s*([A-Z0-9]+)", RegexOptions.IgnoreCase)
+            Dim regexG4 As New Regex("\bG4[A-Z0-9]+\b", RegexOptions.IgnoreCase)
+
+            ' Parcourir tous les paragraphes
+            For Each paragraphe As Paragraph In wordDoc.Paragraphs
+                Dim texte As Range = paragraphe.Range
+
+                ' Recherche du code sujet en rouge
+                For Each mot As Range In texte.Words
+                    If mot.Font.Color = WdColor.wdColorRed AndAlso String.IsNullOrEmpty(_codeSujet) Then
+                        Dim matchSujet As Match = regexCodeSujet.Match(mot.Text)
+                        If matchSujet.Success Then
+                            _codeSujet = matchSujet.Groups(1).Value
+                        End If
+                    End If
+                Next
+
+                ' Recherche des codes G4 dans tout le texte
+                Dim matchG4 As MatchCollection = regexG4.Matches(texte.Text)
+                For Each match As Match In matchG4
+                    If Not _codesG4.Contains(match.Value) Then
+                        _codesG4.Add(match.Value)
+                    End If
+                Next
+            Next
+
+            ' Notifie le changement pour la vue
+            OnPropertyChanged("CodeSujet")
+            OnPropertyChanged("CodesG4")
+
+        Catch ex As Exception
+            ApercuXml = "❌ Erreur lors de l'extraction : " & ex.Message
+        Finally
+            ' Fermer le document et quitter Word
+            If wordDoc IsNot Nothing Then
+                wordDoc.Close(False)
+                wordDoc = Nothing
+            End If
+            wordApp.Quit()
+            wordApp = Nothing
+        End Try
+    End Sub
+
+    ' Méthode pour générer le XML
+    Private Sub GenererApercuXml(obj As Object)
+        Try
+            ' Création de l'objet XML
+            Dim xmlDoc As New XDocument(
+                New XDeclaration("1.0", "utf-8", "yes"),
+                New XElement("memo",
+                    New XElement("champ", Champ1),
+                    New XElement("communication",
+                        New XElement("champ", Champ2)
+                    ),
+                    New XElement("IdRef", Champ3),
+                    New XElement("CodeSujet", CodeSujet),
+                    New XElement("CodesG4",
+                        From code In _codesG4
+                        Select New XElement("Code", code)
+                    ),
+                    New XElement("divers", "")
+                )
+            )
+
+            ' Met à jour l'aperçu XML
+            ApercuXml = xmlDoc.Declaration.ToString() & Environment.NewLine & xmlDoc.ToString()
+
+        Catch ex As Exception
+            ApercuXml = "❌ Erreur lors de la génération : " & ex.Message
+        End Try
+    End Sub
+
+    ' Notification de changement
+    Public Event PropertyChanged As PropertyChangedEventHandler Implements INotifyPropertyChanged.PropertyChanged
+    Protected Sub OnPropertyChanged(propertyName As String)
+        RaiseEvent PropertyChanged(Me, New PropertyChangedEventArgs(propertyName))
+    End Sub
+End Class
