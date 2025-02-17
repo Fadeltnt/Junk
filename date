@@ -1,0 +1,81 @@
+<StackPanel Orientation="Vertical" Margin="10">
+    <!-- TextBox pour saisir l'information fixe -->
+    <TextBox Width="200" 
+             Text="{Binding InfoVariableFixe, UpdateSourceTrigger=PropertyChanged}" 
+             PlaceholderText="Entrez l'info variable fixe" />
+    
+    <!-- ComboBox pour choisir le paragraphe où l'ajouter -->
+    <ComboBox Width="200"
+              ItemsSource="{Binding CodesG4}"
+              SelectedItem="{Binding ParagrapheSelectionne}"
+              PlaceholderText="Choisissez le paragraphe" />
+</StackPanel>
+
+
+
+  ' Propriété pour l'information variable fixe
+Private _infoVariableFixe As String
+Public Property InfoVariableFixe As String
+    Get
+        Return _infoVariableFixe
+    End Get
+    Set(value As String)
+        _infoVariableFixe = value
+        OnPropertyChanged("InfoVariableFixe")
+    End Set
+End Property
+
+' Propriété pour le paragraphe sélectionné
+Private _paragrapheSelectionne As String
+Public Property ParagrapheSelectionne As String
+    Get
+        Return _paragrapheSelectionne
+    End Get
+    Set(value As String)
+        _paragrapheSelectionne = value
+        OnPropertyChanged("ParagrapheSelectionne")
+    End Set
+End Property
+
+
+
+  Private Sub GenererApercuXmlG4(obj As Object)
+    Try
+        ' Création de l'objet XML
+        Dim xmlDoc As New XDocument(
+            New XDeclaration("1.0", "utf-8", "yes"),
+            New XElement("memo",
+                New XElement("champ", Champ1),
+                New XElement("communication",
+                    New XElement("champ", Champ2)
+                ),
+                New XElement("IdRef", Champ3),
+                New XElement("CodeSujet", CodeSujet),
+                New XElement("CodesG4",
+                    From code In _codesG4
+                    Select New XElement("paragraphe",
+                        New XElement("numero", code),
+                        If(code = ParagrapheSelectionne AndAlso Not String.IsNullOrEmpty(InfoVariableFixe),
+                            New XElement("Variables",
+                                New XElement("numero", InfoVariableFixe)
+                            ),
+                            New XElement("Variables")
+                        )
+                    )
+                ),
+                New XElement("divers", "")
+            )
+        )
+
+        ' Met à jour l'aperçu XML
+        ApercuXml = xmlDoc.Declaration.ToString() & Environment.NewLine & xmlDoc.ToString()
+
+        ' Réinitialisation des valeurs après génération
+        InfoVariableFixe = String.Empty
+        ParagrapheSelectionne = Nothing
+        _codesG4.Clear()
+
+    Catch ex As Exception
+        ApercuXml = "❌ Erreur lors de la génération : " & ex.Message
+    End Try
+End Sub
