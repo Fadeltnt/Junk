@@ -1,3 +1,80 @@
+' Méthode pour extraire les informations du fichier Word
+Private Sub ExtraireCodesDepuisWord(obj As Object)
+    _codesG4.Clear()
+    _codeSujet = String.Empty
+
+    Dim wordApp As New Application()
+    Dim wordDoc As Document = Nothing
+
+    Try
+        ' Ouvre le fichier Word en lecture seule
+        wordDoc = wordApp.Documents.Open(cheminFichier, ReadOnly:=True)
+
+        ' Définir les regex pour le code sujet, les codes G4 et les numéros de variable
+        Dim regexCodeSujet As New Regex("Code sujet\s*:\s*([A-Z0-9]+)", RegexOptions.IgnoreCase)
+        Dim regexG4 As New Regex("\bG4[A-Z0-9]+\b", RegexOptions.IgnoreCase)
+        Dim regexVariable As New Regex("C\d+-\d+-(\d+)", RegexOptions.IgnoreCase)
+
+        ' Indicateur pour commencer la collecte après le Code Sujet
+        Dim collecteActive As Boolean = False
+
+        ' Parcourir tous les paragraphes
+        For Each paragraphe As Paragraph In wordDoc.Paragraphs
+            Dim texte As String = paragraphe.Range.Text.Trim()
+
+            ' Recherche du code sujet (une seule fois)
+            If Not collecteActive Then
+                Dim matchSujet As Match = regexCodeSujet.Match(texte)
+                If matchSujet.Success Then
+                    _codeSujet = matchSujet.Groups(1).Value
+                    collecteActive = True
+                End If
+            Else
+                ' Recherche des codes G4
+                Dim matchG4 As MatchCollection = regexG4.Matches(texte)
+                For Each match As Match In matchG4
+                    Dim codeG4 As String = match.Value
+                    Dim numeroVariable As String = String.Empty
+
+                    ' Recherche de la variable associée dans le même paragraphe
+                    Dim matchVariable As Match = regexVariable.Match(texte)
+                    If matchVariable.Success Then
+                        numeroVariable = matchVariable.Groups(1).Value
+                    End If
+
+                    ' Ajoute le code G4 avec ou sans variable
+                    If String.IsNullOrEmpty(numeroVariable) Then
+                        _codesG4.Add(codeG4)
+                    Else
+                        _codesG4.Add($"{codeG4}|{numeroVariable}")
+                    End If
+                Next
+            End If
+        Next
+
+        ' Notifie le changement pour la vue
+        OnPropertyChanged("CodeSujet")
+        OnPropertyChanged("CodesG4")
+
+    Catch ex As Exception
+        ApercuXml = "❌ Erreur lors de l'extraction : " & ex.Message
+    Finally
+        ' Fermer le document et quitter Word
+        If wordDoc IsNot Nothing Then
+            wordDoc.Close(False)
+            wordDoc = Nothing
+        End If
+        wordApp.Quit()
+        wordApp = Nothing
+    End Try
+End Sub
+
+
+
+
+
+
+
 ' Méthode pour générer le XML avec gestion des variables
 Private Sub GenererApercuXml(obj As Object)
     Try
