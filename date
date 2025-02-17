@@ -121,3 +121,14 @@ End Sub
         <TextBox Name="ApercuXmlTextBox" Width="700" Height="200" Margin="10" VerticalScrollBarVisibility="Auto" IsReadOnly="True" />
     </Grid>
 </Window>
+
+Private Sub ToggleOptions_Click(sender As Object, e As RoutedEventArgs)
+    ' Vérifier la visibilité du panel et alterner l'affichage
+    If OptionsPanel.Visibility = Visibility.Collapsed Then
+        OptionsPanel.Visibility = Visibility.Visible
+        OptionsButton.Content = "Options Avancées ▲" ' Modifier le texte du bouton
+    Else
+        OptionsPanel.Visibility = Visibility.Collapsed
+        OptionsButton.Content = "Options Avancées ▼" ' Modifier le texte du bouton
+    End If
+End Sub
