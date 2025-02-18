@@ -1,5 +1,23 @@
+' Méthode mise à jour pour générer le XML
 Private Sub GenererApercuXml(obj As Object)
     Try
+        ' Ajouter la nouvelle information fixe au dictionnaire
+        If Not String.IsNullOrEmpty(ParagrapheSelectionne) AndAlso Not String.IsNullOrEmpty(InfoVariableFixe) Then
+            ' Capturer la valeur actuelle de _numeroVariableFixe
+            Dim numeroActuel = _numeroVariableFixe
+
+            ' Si le paragraphe existe déjà dans le dictionnaire, on ajoute à la liste
+            If _variablesFixes.ContainsKey(ParagrapheSelectionne) Then
+                _variablesFixes(ParagrapheSelectionne).Add((numeroActuel, InfoVariableFixe))
+            Else
+                ' Sinon, on crée une nouvelle liste pour ce paragraphe
+                _variablesFixes(ParagrapheSelectionne) = New List(Of (String, String)) From {(numeroActuel, InfoVariableFixe)}
+            End If
+
+            ' Réinitialiser la TextBox après ajout
+            InfoVariableFixe = String.Empty
+        End If
+        
         ' Création du XML basé sur les champs saisis
         Dim xmlDoc As New XDocument(
             New XDeclaration("1.0", "utf-8", "yes"),
@@ -18,46 +36,9 @@ Private Sub GenererApercuXml(obj As Object)
                     New XElement("paragraphes",
                         From code In _codesParagraphe
                         Let parts = code.Split("|"c)
-                        Let numero = parts(0)
+                        Let numeroActuel = parts(0)
                         Let variable = If(parts.Length > 1, parts(1), String.Empty)
-
-                        ' Création du bloc Variables pour les variables automatiques
-                        Let infoVariablesElement = If(Not String.IsNullOrEmpty(variable),
-                            New XElement("Variables",
-                                New XElement("numero", variable)
-                            ),
-                            Nothing
-                        )
-
-                        ' Création du bloc Variables pour les variables fixes
-                        Let infoVariablesFixesElement = If(_variablesFixes.ContainsKey(numero),
-                            New XElement("Variables",
-                                New XElement("numero", _variablesFixes(numero)),
-                                New XElement("valeur", "VariableFixe" & _variablesFixes(numero))
-                            ),
-                            Nothing
-                        )
-
-                        ' Gestion des cas :
-                        ' - Si les deux sont présents -> Deux blocs <Variables>
-                        ' - Si un seul est présent -> Un seul bloc <Variables>
-                        ' - Si aucun n'est présent -> <Variables/>
-                        Let variablesElements = New List(Of XElement)()
-                        If infoVariablesElement IsNot Nothing Then
-                            variablesElements.Add(infoVariablesElement)
-                        End If
-                        If infoVariablesFixesElement IsNot Nothing Then
-                            variablesElements.Add(infoVariablesFixesElement)
-                        End If
-                        If variablesElements.Count = 0 Then
-                            variablesElements.Add(New XElement("Variables"))
-                        End If
-
-                        ' Sélection de l'élément paragraphe avec les blocs Variables
-                        Select New XElement("paragraphe",
-                            New XElement("numero", numero),
-                            variablesElements
-                        )
+                        Select CreateParagrapheElement(numeroActuel, variable)
                     )
                 ),
                 New XElement("divers", "")
@@ -76,16 +57,10 @@ Private Sub GenererApercuXml(obj As Object)
             ApercuXml = sw.ToString()
         End Using
 
-        ' Réinitialisation des valeurs après la génération
-        _codesParagraphe.Clear()
-        _codeSujet = String.Empty
-
     Catch ex As Exception
         ApercuXml = "❌ Erreur lors de la génération : " & ex.Message
     End Try
 End Sub
-
-
 
 ' Méthode pour créer l'élément paragraphe avec les variables
 Private Function CreateParagrapheElement(numero As String, variable As String) As XElement
@@ -100,10 +75,10 @@ Private Function CreateParagrapheElement(numero As String, variable As String) A
     ' Création des blocs Variables pour les variables fixes (plusieurs possibles)
     Dim infoVariablesFixesElements As New List(Of XElement)
     If _variablesFixes.ContainsKey(numero) Then
-        For Each valeur In _variablesFixes(numero)
+        For Each (numeroFixe, valeur) In _variablesFixes(numero)
             infoVariablesFixesElements.Add(
                 New XElement("Variables",
-                    New XElement("numero", _numeroVariableFixe),
+                    New XElement("numero", numeroFixe),
                     New XElement("valeur", valeur)
                 )
             )
@@ -129,65 +104,3 @@ Private Function CreateParagrapheElement(numero As String, variable As String) A
         variablesElements
     )
 End Function
-
-
-' Méthode pour générer le XML avec gestion des variables
-Private Sub GenererApercuXml(obj As Object)
-    Try
-        ' Ajouter la nouvelle information fixe au dictionnaire
-        If Not String.IsNullOrEmpty(ParagrapheSelectionne) AndAlso Not String.IsNullOrEmpty(InfoVariableFixe) Then
-            ' Si le paragraphe existe déjà dans le dictionnaire, on ajoute à la liste
-            If _variablesFixes.ContainsKey(ParagrapheSelectionne) Then
-                _variablesFixes(ParagrapheSelectionne).Add(InfoVariableFixe)
-            Else
-                ' Sinon, on crée une nouvelle liste pour ce paragraphe
-                _variablesFixes(ParagrapheSelectionne) = New List(Of String) From {InfoVariableFixe}
-            End If
-
-            ' Réinitialiser la TextBox après ajout
-            InfoVariableFixe = String.Empty
-        End If
-        
-        ' Création du XML basé sur les champs saisis
-        Dim xmlDoc As New XDocument(
-            New XDeclaration("1.0", "utf-8", "yes"),
-            New XElement("memo",
-                New XElement("nombreSegment", 1),
-                New XElement("nomClasse", "CommunicationAdHoc"),
-                New XElement("FichiersAImporter", "fichierplat.txt"),
-                New XElement("CommunicationAdHoc",
-                    New XElement("CodeStructure", CodeStructure),
-                    New XElement("CodeSujet", CodeSujet),
-                    New XElement("IndNotifCourriel", IndNotificationCourriel),
-                    New XElement("IndCodeLangue", IndCodeLangue),
-                    New XElement("LogonEmployeRQ", LogonEmployeRQ),
-                    New XElement("TypeIdentifiant", Typeldentifiant),
-                    New XElement("Identifiant", Identifiant),
-                    New XElement("paragraphes",
-                        From code In _codesParagraphe
-                        Let parts = code.Split("|"c)
-                        Let numero = parts(0)
-                        Let variable = If(parts.Length > 1, parts(1), String.Empty)
-                        Select CreateParagrapheElement(numero, variable)
-                    )
-                ),
-                New XElement("divers", "")
-            )
-        )
-
-        ' Mise à jour de l'aperçu XML avec indentation
-        Dim settings As New XmlWriterSettings() With {
-            .Indent = True,
-            .Encoding = New System.Text.UTF8Encoding(False)
-        }
-        Using sw As New StringWriter()
-            Using xw As XmlWriter = XmlWriter.Create(sw, settings)
-                xmlDoc.Save(xw)
-            End Using
-            ApercuXml = sw.ToString()
-        End Using
-
-    Catch ex As Exception
-        ApercuXml = "❌ Erreur lors de la génération : " & ex.Message
-    End Try
-End Sub
