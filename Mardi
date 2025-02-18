@@ -16,31 +16,42 @@ Private Sub GenererApercuXml(obj As Object)
                     Let numero = parts(0) ' Déclaration de 'numero'
                     Let variable = If(parts.Length > 1, parts(1), String.Empty)
 
-                    ' Récupération des variables automatiques et fixes
-                    Let variablesXmlElement = If(Not String.IsNullOrEmpty(variable),
-                        New XElement("numero", variable),
+                    ' Création du bloc Variables pour les variables automatiques
+                    Let variablesAutomatiques = If(Not String.IsNullOrEmpty(variable),
+                        New XElement("Variables",
+                            New XElement("numero", variable)
+                        ),
                         Nothing
                     )
 
-                    Let variablesFixesXmlElement = If(_variablesFixes.ContainsKey(numero),
-                        New XElement("numero", _variablesFixes(numero)),
+                    ' Création du bloc Variables pour les variables fixes
+                    Let variablesFixes = If(_variablesFixes.ContainsKey(numero),
+                        New XElement("Variables",
+                            New XElement("numero", _variablesFixes(numero)),
+                            New XElement("valeur", "VariableFixe" & _variablesFixes(numero))
+                        ),
                         Nothing
                     )
 
-                    ' Création de l'élément <Variables> en tenant compte des conditions
-                    Let finalVariablesElement = 
-                        If(variablesXmlElement IsNot Nothing OrElse variablesFixesXmlElement IsNot Nothing,
-                            New XElement("Variables",
-                                variablesXmlElement,
-                                variablesFixesXmlElement
-                            ),
-                            New XElement("Variables") ' Si aucune variable, affiche juste <Variables/>
-                        )
+                    ' Gestion des cas :
+                    ' - Si les deux sont présents -> Deux blocs <Variables>
+                    ' - Si un seul est présent -> Un seul bloc <Variables>
+                    ' - Si aucun n'est présent -> <Variables/>
+                    Let variablesElements = New List(Of XElement)()
+                    If variablesAutomatiques IsNot Nothing Then
+                        variablesElements.Add(variablesAutomatiques)
+                    End If
+                    If variablesFixes IsNot Nothing Then
+                        variablesElements.Add(variablesFixes)
+                    End If
+                    If variablesElements.Count = 0 Then
+                        variablesElements.Add(New XElement("Variables"))
+                    End If
 
-                    ' Sélection de l'élément paragraphe avec ou sans variables
+                    ' Sélection de l'élément paragraphe avec les blocs Variables
                     Select New XElement("paragraphe",
                         New XElement("numero", numero),
-                        finalVariablesElement
+                        variablesElements
                     )
                 ),
                 New XElement("divers", "")
