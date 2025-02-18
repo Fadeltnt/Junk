@@ -16,27 +16,25 @@ Private Sub GenererApercuXml(obj As Object)
                     Let numero = parts(0) ' Déclaration de 'numero'
                     Let variable = If(parts.Length > 1, parts(1), String.Empty)
 
-                    ' Ajout de la variable automatique si elle existe
+                    ' Récupération des variables automatiques et fixes
                     Let variablesXmlElement = If(Not String.IsNullOrEmpty(variable),
-                        New XElement("Variables", New XElement("numero", variable)),
+                        New XElement("numero", variable),
                         Nothing
                     )
 
-                    ' Ajout de la variable fixe si elle existe
-                    Let variablesFixesXmlElement =
-                        If(_variablesFixes.ContainsKey(numero),
-                            New XElement("Variables",
-                                New XElement("numero", numero),
-                                New XElement("valeur", _variablesFixes(numero))
-                            ),
-                            Nothing
-                        )
+                    Let variablesFixesXmlElement = If(_variablesFixes.ContainsKey(numero),
+                        New XElement("numero", _variablesFixes(numero)),
+                        Nothing
+                    )
 
-                    ' Si ni variable automatique, ni fixe, créer un élément <Variables/> vide
+                    ' Création de l'élément <Variables> en tenant compte des conditions
                     Let finalVariablesElement = 
                         If(variablesXmlElement IsNot Nothing OrElse variablesFixesXmlElement IsNot Nothing,
-                            New XElement("Variables", variablesXmlElement, variablesFixesXmlElement),
-                            New XElement("Variables") ' <Variables/> vide si aucune variable
+                            New XElement("Variables",
+                                variablesXmlElement,
+                                variablesFixesXmlElement
+                            ),
+                            New XElement("Variables") ' Si aucune variable, affiche juste <Variables/>
                         )
 
                     ' Sélection de l'élément paragraphe avec ou sans variables
