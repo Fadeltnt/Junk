@@ -15,15 +15,15 @@ Private Sub GenererApercuXml(obj As Object)
                     Let parts = code.Split("|"c)
                     Let numero = parts(0) ' Déclaration de 'numero'
                     Let variable = If(parts.Length > 1, parts(1), String.Empty)
-                    
-                    ' Création des éléments XML pour chaque paragraphe
-                    Let variablesElement = If(Not String.IsNullOrEmpty(variable),
+
+                    ' Ajout de la variable automatique si elle existe
+                    Let variablesXmlElement = If(Not String.IsNullOrEmpty(variable),
                         New XElement("Variables", New XElement("numero", variable)),
-                        New XElement("Variables")
+                        Nothing
                     )
 
-                    ' Vérification des variables fixes associées à 'numero'
-                    Let variablesFixesElement = 
+                    ' Ajout de la variable fixe si elle existe
+                    Let variablesFixesXmlElement =
                         If(_variablesFixes.ContainsKey(numero),
                             New XElement("Variables",
                                 New XElement("numero", numero),
@@ -32,10 +32,17 @@ Private Sub GenererApercuXml(obj As Object)
                             Nothing
                         )
 
+                    ' Si ni variable automatique, ni fixe, créer un élément <Variables/> vide
+                    Let finalVariablesElement = 
+                        If(variablesXmlElement IsNot Nothing OrElse variablesFixesXmlElement IsNot Nothing,
+                            New XElement("Variables", variablesXmlElement, variablesFixesXmlElement),
+                            New XElement("Variables") ' <Variables/> vide si aucune variable
+                        )
+
+                    ' Sélection de l'élément paragraphe avec ou sans variables
                     Select New XElement("paragraphe",
                         New XElement("numero", numero),
-                        variablesElement,
-                        variablesFixesElement
+                        finalVariablesElement
                     )
                 ),
                 New XElement("divers", "")
