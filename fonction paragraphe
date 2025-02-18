@@ -1,0 +1,40 @@
+' Méthode pour créer l'élément paragraphe avec les variables
+Private Function CreateParagrapheElement(numero As String, variable As String) As XElement
+    ' Création du bloc Variables pour les variables automatiques
+    Dim infoVariablesElement As XElement = Nothing
+    If Not String.IsNullOrEmpty(variable) Then
+        infoVariablesElement = New XElement("Variables",
+            New XElement("numero", variable)
+        )
+    End If
+
+    ' Création du bloc Variables pour les variables fixes
+    Dim infoVariablesFixesElement As XElement = Nothing
+    If _variablesFixes.ContainsKey(numero) Then
+        infoVariablesFixesElement = New XElement("Variables",
+            New XElement("numero", _variablesFixes(numero)),
+            New XElement("valeur", "VariableFixe" & _variablesFixes(numero))
+        )
+    End If
+
+    ' Gestion des cas :
+    ' - Si les deux sont présents -> Deux blocs <Variables>
+    ' - Si un seul est présent -> Un seul bloc <Variables>
+    ' - Si aucun n'est présent -> <Variables/>
+    Dim variablesElements As New List(Of XElement)
+    If infoVariablesElement IsNot Nothing Then
+        variablesElements.Add(infoVariablesElement)
+    End If
+    If infoVariablesFixesElement IsNot Nothing Then
+        variablesElements.Add(infoVariablesFixesElement)
+    End If
+    If variablesElements.Count = 0 Then
+        variablesElements.Add(New XElement("Variables"))
+    End If
+
+    ' Retourne l'élément paragraphe avec les blocs Variables
+    Return New XElement("paragraphe",
+        New XElement("numero", numero),
+        variablesElements
+    )
+End Function
